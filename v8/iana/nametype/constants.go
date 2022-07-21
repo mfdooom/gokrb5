@@ -12,4 +12,5 @@ const (
 	KRB_NT_X500_PRINCIPAL int32 = 6  //Encoded X.509 Distinguished name [RFC2253]
 	KRB_NT_SMTP_NAME      int32 = 7  //Name in form of SMTP email name (e.g., user@example.com)
 	KRB_NT_ENTERPRISE     int32 = 10 //Enterprise name; may be mapped to principal name
+        KRB_MS_PRINCIPAL      int32 = -128 // cusome MS nametype
 )
