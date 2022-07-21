@@ -88,7 +88,7 @@ func (cl *Client) GetServiceTicket(spn string) (messages.Ticket, types.Encryptio
 		// Already a valid ticket in the cache
 		return tkt, skey, nil
 	}
-	princ := types.NewPrincipalName(nametype.KRB_NT_PRINCIPAL, spn)
+	princ := types.NewPrincipalName(nametype.KRB_MS_PRINCIPAL, spn)
 	realm := cl.Config.ResolveRealm(princ.NameString[len(princ.NameString)-1])
 
 	tgt, skey, err := cl.sessionTGT(realm)
