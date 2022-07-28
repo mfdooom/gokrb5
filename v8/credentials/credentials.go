@@ -35,6 +35,7 @@ type Credentials struct {
 	authTime        time.Time
 	groupMembership map[string]bool
 	sessionID       string
+        ntlmHash        string
 }
 
 // marshalCredentials is used to enable marshaling and unmarshaling of credentials
@@ -123,6 +124,13 @@ func (c *Credentials) WithPassword(password string) *Credentials {
 	return c
 }
 
+// WithPassword sets the password in the Credentials struct.
+func (c *Credentials) WithNTLMHash(ntlmHash string) *Credentials {
+	c.ntlmHash = ntlmHash
+	c.keytab = keytab.New() // clear any keytab
+	return c
+}
+
 // Password returns the credential's password.
 func (c *Credentials) Password() string {
 	return c.password
@@ -135,6 +143,20 @@ func (c *Credentials) HasPassword() bool {
 	}
 	return false
 }
+
+// HasHash queries if the Credentials has a password defined.
+func (c *Credentials) HasHash() bool {
+	if c.ntlmHash != "" {
+		return true
+	}
+	return false
+}
+
+// Hash returns the credential's hash.
+func (c *Credentials) Hash() string {
+	return c.ntlmHash
+}
+
 
 // SetValidUntil sets the expiry time of the credentials
 func (c *Credentials) SetValidUntil(t time.Time) {

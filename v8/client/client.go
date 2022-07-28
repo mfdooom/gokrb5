@@ -45,6 +45,21 @@ func NewWithPassword(username, realm, password string, krb5conf *config.Config, 
 	}
 }
 
+// NewWithNTLMHash creates a new client from a password credential.
+// Set the realm to empty string to use the default realm from config.
+func NewWithHash(username, realm, ntlmHash string, krb5conf *config.Config, settings ...func(*Settings)) *Client {
+	creds := credentials.New(username, realm)
+	return &Client{
+		Credentials: creds.WithNTLMHash(ntlmHash),
+		Config:      krb5conf,
+		settings:    NewSettings(settings...),
+		sessions: &sessions{
+			Entries: make(map[string]*session),
+		},
+		cache: NewCache(),
+	}
+}
+
 // NewWithKeytab creates a new client from a keytab credential.
 func NewWithKeytab(username, realm string, kt *keytab.Keytab, krb5conf *config.Config, settings ...func(*Settings)) *Client {
 	creds := credentials.New(username, realm)
@@ -131,6 +146,9 @@ func (cl *Client) Key(etype etype.EType, kvno int, krberr *messages.KRBError) (t
 		}
 		key, _, err := crypto.GetKeyFromPassword(cl.Credentials.Password(), cl.Credentials.CName(), cl.Credentials.Domain(), etype.GetETypeID(), types.PADataSequence{})
 		return key, 0, err
+	}else if cl.Credentials.HasHash(){
+            key, _, err := crypto.GetKeyFromNTLMHash(cl.Credentials.Hash(), cl.Credentials.CName(), cl.Credentials.Domain(), etype.GetETypeID())
+            return key, 0, err
 	}
 	return types.EncryptionKey{}, 0, errors.New("credential has neither keytab or password to generate key")
 }
@@ -144,7 +162,7 @@ func (cl *Client) IsConfigured() (bool, error) {
 		return false, errors.New("client does not have a define realm")
 	}
 	// Client needs to have either a password, keytab or a session already (later when loading from CCache)
-	if !cl.Credentials.HasPassword() && !cl.Credentials.HasKeytab() {
+	if !cl.Credentials.HasPassword() && !cl.Credentials.HasKeytab() && !cl.Credentials.HasHash(){
 		authTime, _, _, _, err := cl.sessionTimes(cl.Credentials.Domain())
 		if err != nil || authTime.IsZero() {
 			return false, errors.New("client has neither a keytab nor a password set and no session")
@@ -168,7 +186,7 @@ func (cl *Client) Login() error {
 	if ok, err := cl.IsConfigured(); !ok {
 		return err
 	}
-	if !cl.Credentials.HasPassword() && !cl.Credentials.HasKeytab() {
+	if (!cl.Credentials.HasPassword() && !cl.Credentials.HasKeytab() && !cl.Credentials.HasHash()){
 		_, endTime, _, _, err := cl.sessionTimes(cl.Credentials.Domain())
 		if err != nil {
 			return krberror.Errorf(err, krberror.KRBMsgError, "no user credentials available and error getting any existing session")

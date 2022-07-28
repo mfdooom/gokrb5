@@ -1,4 +1,5 @@
 // Package crypto implements cryptographic functions for Kerberos 5 implementation.
+
 package crypto
 
 import (
@@ -135,6 +136,24 @@ func GetKeyFromPassword(passwd string, cname types.PrincipalName, realm string, 
 	return key, et, nil
 }
 
+func GetKeyFromNTLMHash(hash string, cname types.PrincipalName, realm string, etypeID int32) (types.EncryptionKey, etype.EType, error) {
+
+	var key types.EncryptionKey
+	et, err := GetEtype(etypeID)
+	if err != nil {
+		return key, et, fmt.Errorf("error getting encryption type: %v", err)
+	}
+        k, err := hex.DecodeString(hash)
+        if err != nil {
+            panic(err)
+        }
+	key = types.EncryptionKey{
+		KeyType:  etypeID,
+		KeyValue: k,
+	}
+	return key, et, nil
+
+}
 // GetEncryptedData encrypts the data provided and returns and EncryptedData type.
 // Pass a usage value of zero to use the key provided directly rather than deriving one.
 func GetEncryptedData(plainBytes []byte, key types.EncryptionKey, usage uint32, kvno int) (types.EncryptedData, error) {
