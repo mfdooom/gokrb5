@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"time"
+	"h12.io/socks"
 
 	"github.com/jcmturner/gokrb5/v8/iana/errorcode"
 	"github.com/jcmturner/gokrb5/v8/messages"
@@ -15,6 +16,18 @@ import (
 // SendToKDC performs network actions to send data to the KDC.
 func (cl *Client) sendToKDC(b []byte, realm string) ([]byte, error) {
 	var rb []byte
+	
+	if cl.Config.Socks.Enabled {
+		rb, errtcp := cl.sendKDCTCPSocks(realm, b)
+		if errtcp != nil {
+			if e, ok := errtcp.(messages.KRBError); ok {
+				return rb, e
+			}
+			return rb, fmt.Errorf("communication error with KDC via Socks Proxy: %v", errtcp)
+		}
+		return rb, nil
+	}
+
 	if cl.Config.LibDefaults.UDPPreferenceLimit == 1 {
 		//1 means we should always use TCP
 		rb, errtcp := cl.sendKDCTCP(realm, b)
@@ -175,6 +188,36 @@ func dialSendTCP(kdcs map[int]string, b []byte) ([]byte, error) {
 	return nil, fmt.Errorf("error sending to a KDC: %s", strings.Join(errs, "; "))
 }
 
+func (cl *Client)dialSendTCPSocks(kdcs map[int]string, b []byte) ([]byte, error) {
+	var errs []string
+	for i := 1; i <= len(kdcs); i++ {
+		tcpAddr, err := net.ResolveTCPAddr("tcp", kdcs[i])
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("error resolving KDC address: %v", err))
+			continue
+		}
+
+		proxyDial := socks.DialSocksProxy(cl.Config.Socks.Version, cl.Config.Socks.Server)
+		conn, err := proxyDial("tcp", tcpAddr.String())
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("error setting dial timeout on connection to %s: %v", kdcs[i], err))
+			continue
+		}
+		if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			errs = append(errs, fmt.Sprintf("error setting deadline on connection to %s: %v", kdcs[i], err))
+			continue
+		}
+		// conn is guaranteed to be a TCPConn
+		rb, err := sendTCP(conn.(*net.TCPConn), b)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("error sneding to %s: %v", kdcs[i], err))
+			continue
+		}
+		return rb, nil
+	}
+	return nil, fmt.Errorf("error sending to a KDC: %s", strings.Join(errs, "; "))
+}
+
 // sendTCP sends bytes to connection over TCP.
 func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
 	defer conn.Close()
@@ -205,6 +248,20 @@ func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
 		return r, fmt.Errorf("no response data from KDC %s", conn.RemoteAddr().String())
 	}
 	return rb, nil
+}
+
+// sendKDCTCP sends bytes to the KDC via Socks.
+func (cl *Client) sendKDCTCPSocks(realm string, b []byte) ([]byte, error) {
+	var r []byte
+	_, kdcs, err := cl.Config.GetKDCs(realm, true)
+	if err != nil {
+		return r, err
+	}
+	r, err = cl.dialSendTCPSocks(kdcs, b)
+	if err != nil {
+		return r, err
+	}
+	return checkForKRBError(r)
 }
 
 // checkForKRBError checks if the response bytes from the KDC are a KRBError.

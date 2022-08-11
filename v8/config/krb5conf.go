@@ -25,6 +25,7 @@ type Config struct {
 	LibDefaults LibDefaults
 	Realms      []Realm
 	DomainRealm DomainRealm
+	Socks Socks
 	//CaPaths
 	//AppDefaults
 	//Plugins
@@ -40,6 +41,12 @@ func New() *Config {
 		LibDefaults: newLibDefaults(),
 		DomainRealm: d,
 	}
+}
+
+type Socks struct {
+	Enabled bool
+	Version int
+	Server string
 }
 
 // LibDefaults represents the [libdefaults] section of the configuration.
@@ -82,6 +89,7 @@ type LibDefaults struct {
 	UDPPreferenceLimit    int           // 1 means to always use tcp. MIT krb5 has a default value of 1465, and it prevents user setting more than 32700.
 	VerifyAPReqNofail     bool          //default false
 }
+
 
 // Create a new LibDefaults struct.
 func newLibDefaults() LibDefaults {
