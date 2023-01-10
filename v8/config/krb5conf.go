@@ -25,7 +25,7 @@ type Config struct {
 	LibDefaults LibDefaults
 	Realms      []Realm
 	DomainRealm DomainRealm
-	Socks Socks
+	Socks       Socks
 	//CaPaths
 	//AppDefaults
 	//Plugins
@@ -46,7 +46,7 @@ func New() *Config {
 type Socks struct {
 	Enabled bool
 	Version int
-	Server string
+	Server  string
 }
 
 // LibDefaults represents the [libdefaults] section of the configuration.
@@ -73,6 +73,7 @@ type LibDefaults struct {
 	K5LoginAuthoritative    bool           //default false
 	K5LoginDirectory        string         //default user's home directory. Must be owned by the user or root
 	KDCDefaultOptions       asn1.BitString //default 0x00000010 (KDC_OPT_RENEWABLE_OK)
+	KDCTGSDefaultOptions    asn1.BitString //default 0x00000010 (KDC_OPT_RENEWABLE_OK)
 	KDCTimeSync             int            //default 1
 	//kdc_req_checksum_type int //unlikely to implement as for very old KDCs
 	NoAddresses         bool     //default true
@@ -89,7 +90,6 @@ type LibDefaults struct {
 	UDPPreferenceLimit    int           // 1 means to always use tcp. MIT krb5 has a default value of 1465, and it prevents user setting more than 32700.
 	VerifyAPReqNofail     bool          //default false
 }
-
 
 // Create a new LibDefaults struct.
 func newLibDefaults() LibDefaults {
@@ -113,6 +113,7 @@ func newLibDefaults() LibDefaults {
 		DNSCanonicalizeHostname: true,
 		K5LoginDirectory:        hdir,
 		KDCDefaultOptions:       opts,
+		KDCTGSDefaultOptions:    opts,
 		KDCTimeSync:             1,
 		NoAddresses:             true,
 		PermittedEnctypes:       []string{"aes256-cts-hmac-sha1-96", "aes128-cts-hmac-sha1-96", "des3-cbc-sha1", "arcfour-hmac-md5", "camellia256-cts-cmac", "camellia128-cts-cmac", "des-cbc-crc", "des-cbc-md5", "des-cbc-md4"},

@@ -182,11 +182,14 @@ func tgsReq(cname, sname types.PrincipalName, kdcRealm string, renewal bool, c *
 		return TGSReq{}, err
 	}
 	t := time.Now().UTC()
+	kopts := types.NewKrbFlags()
+	copy(kopts.Bytes, c.LibDefaults.KDCTGSDefaultOptions.Bytes)
+	kopts.BitLength = c.LibDefaults.KDCTGSDefaultOptions.BitLength
 	k := KDCReqFields{
 		PVNO:    iana.PVNO,
 		MsgType: msgtype.KRB_TGS_REQ,
 		ReqBody: KDCReqBody{
-			KDCOptions: types.NewKrbFlags(),
+			KDCOptions: kopts,
 			Realm:      kdcRealm,
 			CName:      cname, // Add the CName to make validation of the reply easier
 			SName:      sname,
